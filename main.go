@@ -38,6 +38,7 @@ type Board struct {
 	bariers   []Barier
 	filedCell string
 	blankCell string
+	expPoints []*ExpolisionPoint
 }
 
 func (b *Board) init() {
@@ -98,11 +99,12 @@ type ExpolisionPoint struct {
 	maxMoves int
 	xFunc,
 	yFunc func(int) int
+	stopped bool
 }
 
 func (e *ExpolisionPoint) move(b *Board) {
 	if b.inBorderRange(e.xNext, e.yNext) || b.outOfFiled(e.xNext, e.yNext) {
-		e.numMoves = e.maxMoves
+		e.stopped = true
 		return
 	}
 
@@ -112,7 +114,6 @@ func (e *ExpolisionPoint) move(b *Board) {
 	e.yCurrent = e.yNext
 	e.xNext = e.xFunc(cX)
 	e.yNext = e.yFunc(cY)
-
 	e.numMoves++
 }
 
@@ -130,6 +131,15 @@ func NewExplosionPoint(x, y int, deltaXFunc, deltaYFunc func(d int) int) *Expoli
 	return e
 }
 
+func (b *Board) getExposionPoint(x, y int) *ExpolisionPoint {
+	for _, p := range b.expPoints {
+		if x == p.xCurrent && y == p.yCurrent {
+			return p
+		}
+	}
+	return nil
+}
+
 func newBoard() *Board {
 	b := &Board{
 		maxX:      xSize,
@@ -141,7 +151,7 @@ func newBoard() *Board {
 	return b
 }
 
-func (b *Board) newExplosionAtom(x, y int) []*ExpolisionPoint {
+func (b *Board) newExplosionAtom(x, y int) {
 	midleX := x / 2
 
 	e := []*ExpolisionPoint{}
@@ -153,9 +163,7 @@ func (b *Board) newExplosionAtom(x, y int) []*ExpolisionPoint {
 			b.addPoint(p.xCurrent, p.yCurrent)
 		}
 	}
-
-	return e
-
+	b.expPoints = e
 }
 
 type Barier struct {
@@ -213,23 +221,24 @@ func main() {
 	b := newBoard()
 
 	go func() {
-		for {
-			time.Sleep(400 * time.Millisecond)
-			if *debug {
-				continue
+		if !*debug {
+			for {
+				time.Sleep(400 * time.Millisecond)
+
+				b.draw()
 			}
-			b.draw()
 		}
+
 	}()
 
 	b.addPunctBarier()
-	expPoints := b.newExplosionAtom(10, 10)
+	b.newExplosionAtom(10, 10)
 	sensor := 21
 	b.addBarier(1, 172, sensor, sensor+1)
 
 	for {
-		for _, p := range expPoints {
-			if p.numMoves == p.maxMoves {
+		for _, p := range b.expPoints {
+			if p.stopped || p.numMoves == p.maxMoves {
 				continue
 			}
 			p.move(b)
