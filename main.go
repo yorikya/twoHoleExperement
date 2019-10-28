@@ -245,12 +245,7 @@ func main() {
 		}
 
 		time.Sleep(300 * time.Millisecond)
-		// buf := bufio.NewReader(os.Stdin)
-		// _, err := buf.ReadBytes('\n')
-		// if err != nil {
-		// 	fmt.Println(err)
 
-		// }
 	}
 
 }
